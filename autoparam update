@@ -1,0 +1,174 @@
+import time
+from pymavlink import mavutil
+
+
+# orb subscription
+#master = mavutil.mavlink_connection('/dev/ttyACM0', baud=57600)
+the_connection = mavutil.mavlink_connection("udp:localhost:14540")
+
+msg = None
+
+global rollrate
+global pitchrate
+global yawrate
+global current_pitchrate
+global current_rollrate
+global current_yawrate
+global rollrate_error
+global pitchrate_error
+
+rollrate = 0
+pitchrate = 0
+yawrate = 0
+current_pitchrate = 0
+current_rollrate = 0
+current_yawrate = 0
+rollrate_error = 0
+pitchrate_error = 0
+global i
+i = 0
+
+
+def param_update2max(rollrate_error, pitchrate_error):
+    
+    #print("Update Start!")
+    #print(rollrate_error)
+    if (rollrate_error >= 0.09 or rollrate_error <= -0.09):
+        #i+=1
+        param_name = b"MC_ROLL_P"
+        param_value_new = 11.9
+        print(rollrate_error)
+        print(i)
+
+        the_connection.mav.param_set_send(the_connection.target_system, the_connection.target_component, param_name, param_value_new, mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+        print("New MC_ROLL_P parameter was set!")
+        
+
+
+def param_update2min():
+    param_name = b"MC_ROLL_P"
+    param_value_new = 0.31
+    the_connection.mav.param_set_send(the_connection.target_system, the_connection.target_component, param_name, param_value_new, mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+    print("min param was updated")
+
+
+
+while True:
+    while msg is None:
+        msg = the_connection.recv_match()
+    msg_type = msg.get_type()
+    
+    
+    if msg.get_type() == 'ATTITUDE_TARGET':
+        rollrate = msg.body_roll_rate
+        pitchrate = msg.body_pitch_rate
+        yawrate = msg.body_yaw_rate
+        #print(f'Current Target rollrate: {rollrate}')
+        #print(f'Current Target pitchrate: {pitchrate}')
+        #print(f'Current Target yawrate: {yawrate}')
+
+    if msg.get_type() == 'ATTITUDE':
+        current_rollrate = msg.rollspeed
+        current_pitchrate = msg.pitchspeed
+        current_yawrate = msg.yawspeed
+    
+    rollrate_error = current_rollrate - rollrate
+    pitchrate_error = current_pitchrate - pitchrate
+    param_update2max(rollrate_error, pitchrate_error)
+    
+
+    #if msg.get_type() == "MISSION_ITEM_REACHED":
+    #    seq = msg.seq
+    #    time.sleep(7)
+    #    param_update2min()
+
+    msg = None
+        
+'''
+while True:
+    msg = the_connection.recv_match()
+    msg_type = msg.get_type()
+    
+    if msg_type == "ATTITUDE":
+        roll_body = msg.roll
+        pitch_body = msg.pitch
+        yaw_body = msg.yaw
+        print(f'Current state: {roll_body}, {pitch_body}, {yaw_body}')
+        print("it is attitude!")
+    
+    elif msg_type == "NAV_CONTROLLER_OUTPUT":
+        target_bearing = msg.target_bearing
+        wp_dist = msg.wp_dist
+        print(f"Target bearing: {target_bearing}, Waypoint distance: {wp_dist}")
+        print("it is NAV_CONTROLLER_OUTPUT!")
+'''
+"""
+def handle_target(msg):
+    global current_roll
+    global current_pitch
+    global current_altitude
+    global alt_error
+    global roll_error
+    global pitch_error
+    global heading_error
+
+    global alt_series
+    global roll_series
+    global pitch_series
+    global heading_series
+    global stable_counter
+    
+    # print("altitude error:%f" %msg.alt_error)
+    # msg.alt_error
+    
+	nav_roll	float	deg	Current desired roll
+	nav_pitch	float	deg	Current desired pitch
+	nav_bearing	int16_t	deg	Current desired heading
+	target_bearing	int16_t	deg	Bearing to current waypoint/target
+	wp_dist	uint16_t	m	Distance to active waypoint
+	alt_error	float	m	Current altitude error
+	aspd_error	float	m/s	Current airspeed error
+	xtrack_error	float	m	Current crosstrack error on x-y plane
+	
+    
+    reference = (msg.nav_roll, msg.nav_pitch, msg.nav_bearing, msg.alt_error, msg.aspd_error, msg.xtrack_error)
+    # print "\nRF_Roll\tRF_Pitch\tRF_Head\tRF_Alt\tRF_Spd\tRF_XY"
+    # print "%0.2f\t%0.2f\t%0.2f\t%0.2f\t%0.2f\t%0.2f\t" % reference
+
+    # print("\nRoll error:%f, pitch error:%f, heading error:%f\n" %(abs(msg.nav_roll - current_roll), abs(msg.nav_pitch - current_pitch), abs(msg.nav_bearing - current_heading)))
+
+    alt_error += msg.alt_error
+    roll_error += abs(msg.nav_roll - current_roll)
+    pitch_error += abs(msg.nav_pitch - current_pitch)
+    heading_error += abs(msg.nav_bearing - current_heading)
+    stable_counter += 1
+
+    # Compute moving average of each state
+    alt_series += (current_altitude + msg.alt_error)
+    roll_series += msg.nav_roll
+    pitch_series += msg.nav_pitch
+    heading_series += msg.nav_bearing
+
+    #print("[DEBUG] current_altitude:%f, alt_error:%f" %(current_altitude, msg.alt_error))
+    #print("Desired heading:%f, current heading:%f" %(msg.nav_bearing, current_heading))
+
+
+
+while True:
+    while msg is None:
+        msg = the_connection.recv_match()
+    msg_type = msg.get_type()
+    print(msg_type)
+    
+    if msg.get_type() == "ATTITUDE":
+        roll_body = msg.roll
+        pitch_body = msg.pitch
+        yaw_body = msg.yaw
+        print(f'Current setpoint: {roll_body}, {pitch_body}, {yaw_body}')
+        print("it is attitude!")
+
+while True:
+    
+    msg = the_connection.recv_match(blocking=True)
+    handle_target(msg)
+"""
