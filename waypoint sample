@@ -1,0 +1,46 @@
+import time
+from pymavlink import mavutil
+
+def create_waypoint(lat, lon, alt, seq):
+    msg = mavutil.mavlink.MAVLink_mission_item_message(
+        0, 0, seq, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+        mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 0,
+        lat, lon, alt)
+    return msg
+
+def main():
+    # Connect to the autopilot
+    master = mavutil.mavlink_connection('udp:localhost:14550')
+
+    # Wait for the autopilot to be ready
+    master.wait_heartbeat()
+
+    # Create a list of waypoints
+    waypoints = []
+
+    # Add 6 waypoints
+    waypoints.append(create_waypoint(47.123, 8.456, 10.0, 0))
+    waypoints.append(create_waypoint(47.234, 8.567, 15.0, 1))
+    waypoints.append(create_waypoint(47.345, 8.678, 20.0, 2))
+    waypoints.append(create_waypoint(47.456, 8.789, 25.0, 3))
+    waypoints.append(create_waypoint(47.567, 8.890, 30.0, 4))
+    waypoints.append(create_waypoint(47.678, 8.901, 35.0, 5))
+
+    # Send the waypoints to the autopilot
+    for waypoint in waypoints:
+        master.mav.mission_item_send(
+            0, 0, waypoint.seq, waypoint.frame, waypoint.command,
+            waypoint.current, waypoint.autocontinue, waypoint.param1,
+            waypoint.param2, waypoint.param3, waypoint.param4,
+            waypoint.x, waypoint.y, waypoint.z)
+
+        time.sleep(0.5)  # Delay between sending waypoints
+
+    # Set the current mission item to the first waypoint
+    master.mav.mission_set_current_send(0, 0)
+
+    # Close the connection
+    master.close()
+
+if __name__ == '__main__':
+    main()
